@@ -1,0 +1,70 @@
+---
+title: "Project for Practical Machine Learning"
+author: "Aleksandra Rutkowska"
+date: "11 marca 2017"
+output: html_document
+--
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R project for Practical Machine Learning document. 
+The aim is to predict the manner in which they did the exercise. 
+This is the "classe" variable in the training set. 
+You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+Get required library
+```{r message=FALSE}
+library(caret)
+library(ggplot2)
+library(kernlab)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+```
+## Training preparation
+Read data to training
+```{r}
+training_data<-read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"), na.strings=c("NA","#DIV/0!",""))
+
+```
+Clean data - removing empty columns (columns with more than 19 200 nans)
+```{r }
+#dim(training_data)
+ifNaN<-is.na(training_data)
+training_data<-training_data[,!(apply(ifNaN, 2, sum)>19200)]
+```
+Devide data set
+```{r , echo=FALSE}
+#set.seed(7826) 
+inTrain<- createDataPartition(y=training_data$classe,p=0.75, list=FALSE)
+training<-training_data[inTrain,]
+validation<-training_data[-inTrain,]
+```
+## Training
+Two type of algorithm will be used: Classification trees and Random forests
+The first model used classification trees.
+```{r}
+model1 <- train(classe ~ ., data=training, method="rpart")
+fancyRpartPlot(model1$finalModel)
+preValidation1<- predict(model1, newdata=validation)
+confusionMatrix(validation$classe, preValidation1)
+```
+
+The second model using random forest with a cross validation of 5 folds.
+```{r message=FALSE }
+model2 <- train(classe ~., data=training, method="rf", tuneGrid = data.frame(mtry = 3) )
+model2
+#getTree(model2$finalModel, k=2)
+preValidation2 <- predict(model2, newdata=validation)
+confusionMatrix(validation$classe, preValidation2)
+```
+## Predicting on test data
+The Accuracy of Random Forests in the validation dataset of 0.9996, which is bigger than accuracy of first model. we choose this model to predict test data.
+```{r, echo=FALSE}
+test_data<-read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+predict(model2, newdata=test_data)
+```
